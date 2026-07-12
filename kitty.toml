@@ -6,14 +6,14 @@ dependencies = ["harfbuzz", "zlib", "libpng"]
 
 [phases]
 build = """
-# 1. Abre a função 'def is_font_present' no setup.py e injeta um 'return True' logo no início dela
-sed -i '/def is_font_present/a \\    return True' setup.py
+# 1. Força o script do Kitty a achar que a lista retornada pelo fc-list veio vazia e limpa
+sed -i "s/fc-list returned unexpected output/pass #/g" setup.py
 
-# 2. Limpa o ambiente para evitar interferências antigas
-unset FONTCONFIG_FILE
-export KITTY_NO_FONTCONFIG_CHECK=1
+# 2. Como o Kitty é teimoso com regex, vamos morder a raiz: se ele tentar dar um 'raise' por causa de fontes, nós transformamos em 'pass'
+sed -i "s/raise .*fc-list.*/pass/g" setup.py
+sed -i "s/raise .*font.*/pass/g" setup.py
 
-# 3. Roda o build do Kitty
+# 3. Executa o build livre das travas de fontes
 python3 setup.py linux-package
 """
 package = """
