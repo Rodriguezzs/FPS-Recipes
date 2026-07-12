@@ -6,27 +6,23 @@ dependencies = ["harfbuzz", "zlib", "libpng"]
 
 [phases]
 build = """
-# 1. Cria um diretório temporário para mascarar binários e fontes
+# 1. Cria a pasta para o nosso PATH mascarado
 mkdir -p /tmp/kitty-blindagem/bin
-mkdir -p /tmp/kitty-blindagem/conf
 
-# 2. Cria um arquivo 'fonts.conf' válido (XML), mas totalmente vazio
-echo '<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd"><fontconfig></fontconfig>' > /tmp/kitty-blindagem/conf/fonts.conf
-
-# 3. Força as variáveis do Fontconfig a olharem para a nossa pasta vazia
-export FONTCONFIG_FILE=/tmp/kitty-blindagem/conf/fonts.conf
-export FONTCONFIG_SYSROOT=/tmp/kitty-blindagem/bin
-
-# 4. CRUCIAL: Cria um binário real fake de 'fc-list' no PATH para interceptar chamadas do Python
+# 2. Cria o fc-list fake que devolve apenas UMA fonte padrão do sistema, enganando o validador do Kitty
 echo '#!/bin/bash' > /tmp/kitty-blindagem/bin/fc-list
-echo 'echo ""' >> /tmp/kitty-blindagem/bin/fc-list
+echo 'echo "/usr/share/fonts/TTF/DejaVuSans.ttf: DejaVu Sans: style=Book"' >> /tmp/kitty-blindagem/bin/fc-list
 echo 'exit 0' >> /tmp/kitty-blindagem/bin/fc-list
 chmod +x /tmp/kitty-blindagem/bin/fc-list
 
-# 5. Injeta a nossa pasta de binários fakes no INÍCIO do PATH absoluto do script
+# 3. Injeta o nosso executável fake no topo do PATH
 export PATH=/tmp/kitty-blindagem/bin:$PATH
 
-# 6. Roda o build do Kitty completamente isolado do seu sistema real
+# 4. Desativa as checagens extras de ambiente do Fontconfig
+export FONTCONFIG_FILE=/dev/null
+export KITTY_NO_FONTCONFIG_CHECK=1
+
+# 5. Roda o build do Kitty
 python3 setup.py linux-package
 """
 package = """
