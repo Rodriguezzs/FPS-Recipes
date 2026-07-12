@@ -6,8 +6,19 @@ dependencies = ["harfbuzz", "zlib", "libpng"]
 
 [phases]
 build = """
+# 1. Cria uma pasta limpa para o Fontconfig fake
+mkdir -p /tmp/fake-fonts
+export FONTCONFIG_SYSROOT=/tmp/fake-fonts
+
+# 2. Cria um arquivo de configuração mínimo e válido que o Fontconfig não vai reclamar
+echo '<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd"><fontconfig></fontconfig>' > /tmp/fake-fonts/fonts.conf
+export FONTCONFIG_FILE=/tmp/fake-fonts/fonts.conf
+
+# 3. Mascara o fc-list para retornar vazio
 fc-list() { echo ""; }
 export -f fc-list
+
+# 4. Roda o build do Kitty
 python3 setup.py linux-package
 """
 package = """
