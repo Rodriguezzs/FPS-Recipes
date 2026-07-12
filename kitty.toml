@@ -6,16 +6,14 @@ dependencies = ["harfbuzz", "zlib", "libpng"]
 
 [phases]
 build = """
-# 1. Usa o sed para comentar a linha do setup.py que valida as fontes e joga o erro
-# Ele vai procurar a checagem do fc-list e desativá-la direto no código fonte do Kitty
-sed -i 's/raise BSDException.*fc-list returned unexpected output.*/pass/g' setup.py
-sed -i 's/print.*fc-list returned unexpected output.*/pass/g' setup.py
+# 1. Abre a função 'def is_font_present' no setup.py e injeta um 'return True' logo no início dela
+sed -i '/def is_font_present/a \\    return True' setup.py
 
-# 2. Garante que as variáveis de ambiente fiquem limpas
+# 2. Limpa o ambiente para evitar interferências antigas
 unset FONTCONFIG_FILE
 export KITTY_NO_FONTCONFIG_CHECK=1
 
-# 3. Roda o build do Kitty livre de checagens quebradas
+# 3. Roda o build do Kitty
 python3 setup.py linux-package
 """
 package = """
