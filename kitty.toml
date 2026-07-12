@@ -20,7 +20,7 @@ if command -v bwrap >/dev/null 2>&1; then
     bwrap --dev-bind / / \\
           --bind /tmp/kitty-fake-bin/fc-list /usr/bin/fc-list \
           --bind /tmp/kitty-fake-bin/fc-list /bin/fc-list \
-          python3 setup.py linux-package
+          python3 setup.py linux-package 
 else
     # Fallback caso não tenha bwrap
     echo "[FPS] Bubblewrap não encontrado. Tentando isolamento via unshare..."
