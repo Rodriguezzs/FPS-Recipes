@@ -9,17 +9,17 @@ build = """
 # 1. Cria a pasta para o nosso PATH mascarado
 mkdir -p /tmp/kitty-blindagem/bin
 
-# 2. Cria o fc-list fake que devolve apenas UMA fonte padrão do sistema, enganando o validador do Kitty
+# 2. Cria o fc-list fake que simula uma fonte Monospace perfeita com as propriedades exatas que o Kitty exige
 echo '#!/bin/bash' > /tmp/kitty-blindagem/bin/fc-list
-echo 'echo "/usr/share/fonts/TTF/DejaVuSans.ttf: DejaVu Sans: style=Book"' >> /tmp/kitty-blindagem/bin/fc-list
+echo 'echo "/usr/share/fonts/dejavu/DejaVuSansMono.ttf: DejaVu Sans Mono:spacing=100:style=Book"' >> /tmp/kitty-blindagem/bin/fc-list
 echo 'exit 0' >> /tmp/kitty-blindagem/bin/fc-list
 chmod +x /tmp/kitty-blindagem/bin/fc-list
 
 # 3. Injeta o nosso executável fake no topo do PATH
 export PATH=/tmp/kitty-blindagem/bin:$PATH
 
-# 4. Desativa as checagens extras de ambiente do Fontconfig
-export FONTCONFIG_FILE=/dev/null
+# 4. Remove o reset do FONTCONFIG_FILE para não bugar o parseador interno do Kitty
+unset FONTCONFIG_FILE
 export KITTY_NO_FONTCONFIG_CHECK=1
 
 # 5. Roda o build do Kitty
