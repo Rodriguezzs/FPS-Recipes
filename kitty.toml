@@ -6,11 +6,17 @@ dependencies = ["harfbuzz", "zlib", "libpng"]
 
 [phases]
 build = """
-# 1. Cria uma árvore local simulando uma estrutura limpa de fontes
+# 1. Cria uma pasta temporária isolada
 mkdir -p /tmp/kitty-fake-env/fonts
 mkdir -p /tmp/kitty-fake-env/cache
 
-# 2. Gera um arquivo XML de Fontconfig perfeitamente legítimo e estruturado
+# 2. Copia apenas UMA fonte monospace padrão do seu sistema para a nossa pasta limpa
+# (O Gentoo costuma ter a DejaVu instalada por padrão)
+cp /usr/share/fonts/dejavu/DejaVuSansMono.ttf /tmp/kitty-fake-env/fonts/ 2>/dev/null || \\
+cp /usr/share/fonts/TTF/DejaVuSansMono.ttf /tmp/kitty-fake-env/fonts/ 2>/dev/null || \\
+find /usr/share/fonts/ -name "*Mono*.ttf" -exec cp {} /tmp/kitty-fake-env/fonts/ \\; -quit
+
+# 3. Gera o arquivo XML apontando para a pasta que agora contém exatamente uma fonte limpa
 cat << 'EOF' > /tmp/kitty-fake-env/fonts.conf
 <?xml version="1.0"?>
 <!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
@@ -20,11 +26,14 @@ cat << 'EOF' > /tmp/kitty-fake-env/fonts.conf
 </fontconfig>
 EOF
 
-# 3. Aponta o Fontconfig do sistema para usar única e exclusivamente este arquivo XML isolado
+# 4. Exporta as variáveis para o Fontconfig ler o nosso ambiente isolado
 export FONTCONFIG_FILE=/tmp/kitty-fake-env/fonts.conf
-export FONTCONFIG_SYSROOT=/tmp/kitty-fake-env
+export KITTY_NO_FONTCONFIG_CHECK=1
 
-# 4. Roda o build do Kitty sem nenhuma interferência das fontes do seu sistema operacional
+# 5. Atualiza o cache do Fontconfig local antes do build
+fc-cache -f /tmp/kitty-fake-env/fonts
+
+# 6. Executa o build do Kitty
 python3 setup.py linux-package
 """
 package = """
