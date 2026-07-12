@@ -6,32 +6,31 @@ dependencies = ["harfbuzz", "zlib", "libpng"]
 
 [phases]
 build = """
-# 1. Cria um diretório isolado para o nosso binário fake
-mkdir -p /tmp/bin-fake
-
-# 2. Escreve um script em Python que finge ser o fc-list do sistema,
-# retornando exatamente a estrutura esperada pelo Kitty
-cat << 'EOF' > /tmp/bin-fake/fc-list
+# 1. Cria o nosso fc-list fake em uma pasta temporária
+mkdir -p /tmp/kitty-fake-bin
+cat << 'EOF' > /tmp/kitty-fake-bin/fc-list
 #!/usr/bin/env python3
-import sys
-# Se o Kitty pedir especificamente propriedades, simulamos o output correto
-if ':' in ' '.join(sys.argv):
-    print("/usr/share/fonts/TTF/DejaVuSansMono.ttf: DejaVu Sans Mono:style=Book:spacing=100")
-else:
-    print("DejaVu Sans Mono")
+print("/usr/share/fonts/TTF/DejaVuSansMono.ttf: DejaVu Sans Mono:style=Book:spacing=100")
 EOF
+chmod +x /tmp/kitty-fake-bin/fc-list
 
-# 3. Dá permissão de execução para o nosso fc-list falso
-chmod +x /tmp/bin-fake/fc-list
-
-# 4. Injeta a pasta no INÍCIO do PATH absoluto
-export PATH=/tmp/bin-fake:$PATH
-
-# 5. Desativa travas conhecidas do Kitty
-export KITTY_NO_FONTCONFIG_CHECK=1
-
-# 6. Roda o build do Kitty
-python3 setup.py linux-package
+# 2. Executa o build do Kitty dentro de uma bolha isolada (Bubblewrap)
+# Isso faz o '/usr/bin/fc-list' apontar para o nosso arquivo fake APENAS durante este comando
+if command -v bwrap >/dev/null 2>&1; then
+    fmt.Println("[FPS] Isolando ambiente absoluto com Bubblewrap...")
+    bwrap --dev-bind / / \
+          --bind /tmp/kitty-fake-env-bin/fc-list /usr/bin/fc-list \
+          --bind /tmp/kitty-fake-env-bin/fc-list /bin/fc-list \
+          python3 setup.py linux-package
+else
+    # Fallback caso não tenha bwrap: Tenta usar namespaces nativos do kernel (unshare)
+    fmt.Println("[FPS] Bubblewrap não encontrado. Tentando isolamento via unshare...")
+    unshare -m sh -c "
+        mount --bind /tmp/kitty-fake-bin/fc-list /usr/bin/fc-list 2>/dev/null
+        mount --bind /tmp/kitty-fake-bin/fc-list /bin/fc-list 2>/dev/null
+        python3 setup.py linux-package
+    "
+fi
 """
 package = """
 mkdir -p $pkgdir/usr
