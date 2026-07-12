@@ -6,19 +6,27 @@ dependencies = ["harfbuzz", "zlib", "libpng"]
 
 [phases]
 build = """
-# 1. Cria uma pasta limpa para o Fontconfig fake
-mkdir -p /tmp/fake-fonts
-export FONTCONFIG_SYSROOT=/tmp/fake-fonts
+# 1. Cria um diretório temporário para mascarar binários e fontes
+mkdir -p /tmp/kitty-blindagem/bin
+mkdir -p /tmp/kitty-blindagem/conf
 
-# 2. Cria um arquivo de configuração mínimo e válido que o Fontconfig não vai reclamar
-echo '<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd"><fontconfig></fontconfig>' > /tmp/fake-fonts/fonts.conf
-export FONTCONFIG_FILE=/tmp/fake-fonts/fonts.conf
+# 2. Cria um arquivo 'fonts.conf' válido (XML), mas totalmente vazio
+echo '<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd"><fontconfig></fontconfig>' > /tmp/kitty-blindagem/conf/fonts.conf
 
-# 3. Mascara o fc-list para retornar vazio
-fc-list() { echo ""; }
-export -f fc-list
+# 3. Força as variáveis do Fontconfig a olharem para a nossa pasta vazia
+export FONTCONFIG_FILE=/tmp/kitty-blindagem/conf/fonts.conf
+export FONTCONFIG_SYSROOT=/tmp/kitty-blindagem/bin
 
-# 4. Roda o build do Kitty
+# 4. CRUCIAL: Cria um binário real fake de 'fc-list' no PATH para interceptar chamadas do Python
+echo '#!/bin/bash' > /tmp/kitty-blindagem/bin/fc-list
+echo 'echo ""' >> /tmp/kitty-blindagem/bin/fc-list
+echo 'exit 0' >> /tmp/kitty-blindagem/bin/fc-list
+chmod +x /tmp/kitty-blindagem/bin/fc-list
+
+# 5. Injeta a nossa pasta de binários fakes no INÍCIO do PATH absoluto do script
+export PATH=/tmp/kitty-blindagem/bin:$PATH
+
+# 6. Roda o build do Kitty completamente isolado do seu sistema real
 python3 setup.py linux-package
 """
 package = """
