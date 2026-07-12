@@ -1,0 +1,19 @@
+name = "kitty"
+version = "0.47.4"
+description = "Emulador de terminal rápido baseado em GPU"
+source = "https://github.com/kovidgoyal/kitty/releases/download/v0.47.4/kitty-0.47.4.tar.xz"
+
+# Aqui você avisa o que o sistema precisa ter ANTES de compilar
+dependencies = ["harfbuzz", "zlib", "libpng", "lcms2", "crypto", "fontconfig"]
+
+[phases]
+# O truque do fc-list falso entra direto na receita, sem poluir seu main.go
+build = """
+fc-list() { echo ""; }
+export -f fc-list
+python3 setup.py linux-package
+"""
+package = """
+mkdir -p $pkgdir/usr
+cp -r linux-package/* $pkgdir/usr/
+"""
