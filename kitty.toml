@@ -6,23 +6,25 @@ dependencies = ["harfbuzz", "zlib", "libpng"]
 
 [phases]
 build = """
-# 1. Cria a pasta para o nosso PATH mascarado
-mkdir -p /tmp/kitty-blindagem/bin
+# 1. Cria uma árvore local simulando uma estrutura limpa de fontes
+mkdir -p /tmp/kitty-fake-env/fonts
+mkdir -p /tmp/kitty-fake-env/cache
 
-# 2. Cria o fc-list fake que simula uma fonte Monospace perfeita com as propriedades exatas que o Kitty exige
-echo '#!/bin/bash' > /tmp/kitty-blindagem/bin/fc-list
-echo 'echo "/usr/share/fonts/dejavu/DejaVuSansMono.ttf: DejaVu Sans Mono:spacing=100:style=Book"' >> /tmp/kitty-blindagem/bin/fc-list
-echo 'exit 0' >> /tmp/kitty-blindagem/bin/fc-list
-chmod +x /tmp/kitty-blindagem/bin/fc-list
+# 2. Gera um arquivo XML de Fontconfig perfeitamente legítimo e estruturado
+cat << 'EOF' > /tmp/kitty-fake-env/fonts.conf
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<fontconfig>
+    <dir>/tmp/kitty-fake-env/fonts</dir>
+    <cachedir>/tmp/kitty-fake-env/cache</cachedir>
+</fontconfig>
+EOF
 
-# 3. Injeta o nosso executável fake no topo do PATH
-export PATH=/tmp/kitty-blindagem/bin:$PATH
+# 3. Aponta o Fontconfig do sistema para usar única e exclusivamente este arquivo XML isolado
+export FONTCONFIG_FILE=/tmp/kitty-fake-env/fonts.conf
+export FONTCONFIG_SYSROOT=/tmp/kitty-fake-env
 
-# 4. Remove o reset do FONTCONFIG_FILE para não bugar o parseador interno do Kitty
-unset FONTCONFIG_FILE
-export KITTY_NO_FONTCONFIG_CHECK=1
-
-# 5. Roda o build do Kitty
+# 4. Roda o build do Kitty sem nenhuma interferência das fontes do seu sistema operacional
 python3 setup.py linux-package
 """
 package = """
