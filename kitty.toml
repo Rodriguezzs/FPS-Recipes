@@ -15,16 +15,15 @@ EOF
 chmod +x /tmp/kitty-fake-bin/fc-list
 
 # 2. Executa o build do Kitty dentro de uma bolha isolada (Bubblewrap)
-# Isso faz o '/usr/bin/fc-list' apontar para o nosso arquivo fake APENAS durante este comando
 if command -v bwrap >/dev/null 2>&1; then
-    fmt.Println("[FPS] Isolando ambiente absoluto com Bubblewrap...")
-    bwrap --dev-bind / / \
-          --bind /tmp/kitty-fake-env-bin/fc-list /usr/bin/fc-list \
-          --bind /tmp/kitty-fake-env-bin/fc-list /bin/fc-list \
+    echo "[FPS] Isolando ambiente absoluto com Bubblewrap..."
+    bwrap --dev-bind / / \\
+          --bind /tmp/kitty-fake-bin/fc-list /usr/bin/fc-list \
+          --bind /tmp/kitty-fake-bin/fc-list /bin/fc-list \
           python3 setup.py linux-package
 else
-    # Fallback caso não tenha bwrap: Tenta usar namespaces nativos do kernel (unshare)
-    fmt.Println("[FPS] Bubblewrap não encontrado. Tentando isolamento via unshare...")
+    # Fallback caso não tenha bwrap
+    echo "[FPS] Bubblewrap não encontrado. Tentando isolamento via unshare..."
     unshare -m sh -c "
         mount --bind /tmp/kitty-fake-bin/fc-list /usr/bin/fc-list 2>/dev/null
         mount --bind /tmp/kitty-fake-bin/fc-list /bin/fc-list 2>/dev/null
